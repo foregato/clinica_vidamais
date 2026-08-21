@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Estatísticas{% endblock %}
+{% block conteudo %}
+<h1>Estatísticas da Clínica Vida+</h1>
+
+{% if dados %}
+<div class="cartoes">
+    <div class="cartao-estat">
+        <span class="numero">{{ dados.total }}</span>
+        <span class="rotulo">Total de pacientes</span>
+    </div>
+    <div class="cartao-estat">
+        <span class="numero">{{ "%.1f"|format(dados.media) }}</span>
+        <span class="rotulo">Idade média</span>
+    </div>
+    <div class="cartao-estat">
+        <span class="numero">{{ dados.mais_novo.nome }}</span>
+        <span class="rotulo">Mais novo ({{ dados.mais_novo.idade }} anos)</span>
+    </div>
+    <div class="cartao-estat">
+        <span class="numero">{{ dados.mais_velho.nome }}</span>
+        <span class="rotulo">Mais velho ({{ dados.mais_velho.idade }} anos)</span>
+    </div>
+</div>
+{% else %}
+<p class="vazio">Nenhum paciente cadastrado ainda.</p>
+{% endif %}
+{% endblock %}

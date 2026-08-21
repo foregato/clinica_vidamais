@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Clínica Vida+ — Início{% endblock %}
+{% block conteudo %}
+<section class="hero">
+    <h1>Bem-vindo à Clínica Vida+</h1>
+    <p>Sistema simples para cadastro e acompanhamento de pacientes.</p>
+    <div class="cartoes">
+        <a class="cartao" href="{{ url_for('cadastrar') }}">
+            <span class="icone">📝</span>
+            <h3>Cadastrar</h3>
+            <p>Adicione um novo paciente ao sistema.</p>
+        </a>
+        <a class="cartao" href="{{ url_for('listar') }}">
+            <span class="icone">📋</span>
+            <h3>Pacientes</h3>
+            <p>Veja todos os pacientes cadastrados.</p>
+        </a>
+        <a class="cartao" href="{{ url_for('buscar') }}">
+            <span class="icone">🔎</span>
+            <h3>Buscar</h3>
+            <p>Encontre um paciente pelo nome.</p>
+        </a>
+        <a class="cartao" href="{{ url_for('estatisticas') }}">
+            <span class="icone">📊</span>
+            <h3>Estatísticas</h3>
+            <p>Total, idade média e mais.</p>
+        </a>
+    </div>
+</section>
+{% endblock %}
