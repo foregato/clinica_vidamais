@@ -1,126 +1,157 @@
-import sqlite3
-import unicodedata
-from flask import Flask, render_template, request, redirect, url_for, flash
+import os
 
-# Inicializa o Flask
-app = Flask(__name__)
-app.secret_key = "clinica-vidamais-chave-simples"
-
-DB_PATH = "clinica.db"
+# Lista principal para armazenar os dados de cada paciente (dicionários)
+# Cada dicionário armazena: {"nome": str, "idade": int, "telefone": str}
+pacientes = []
 
 
-# Abre conexão com o banco retornando linhas acessíveis por nome de coluna
-def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+def limpar_tela():
+    """
+    Limpa o console para manter o menu organizado.
+    """
+    # Limpa o console: 'cls' no Windows, 'clear' em Linux/macOS
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 
-# Cria a tabela inicial caso não exista
-def init_db():
-    conn = get_conn()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS pacientes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            idade INTEGER NOT NULL,
-            telefone TEXT NOT NULL
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
+def cadastrar_paciente():
+    """
+    Permite o cadastro de um novo paciente (nome, idade, telefone),
+    incluindo tratamento de erro para a entrada da idade.
+    """
+    limpar_tela()
+    print("--- NOVO CADASTRO COMPLETO ---")
+
+    # 1. Solicita Nome
+    nome = input("Nome do paciente: ")
+
+    # 2. Tratamento de erro para Idade (deve ser número inteiro, entre 0 e 120)
+    while True:
+        try:
+            idade = int(input("Idade: "))
+            if idade < 0:
+                print("Erro: A idade não pode ser negativa.")
+            elif idade > 120:
+                print("Erro: A idade máxima permitida é 120 anos. Por favor, verifique.")
+            else:
+                break
+        except ValueError:
+            print("Erro: Digite um número inteiro válido para a idade.")
+
+    # 3. Solicita Telefone
+    telefone = input("Telefone: ")
+
+    # Adiciona o dicionário do paciente à lista principal
+    paciente = {"nome": nome, "idade": idade, "telefone": telefone}
+    pacientes.append(paciente)
+    print("\nPaciente cadastrado com sucesso!")
+    input("Pressione ENTER para voltar ao menu...")
 
 
-# Remove acentos e converte para minúsculas
-def normalizar_texto(texto):
-    texto = unicodedata.normalize("NFD", texto)
-    return "".join(c for c in texto if not unicodedata.combining(c)).lower()
+def ver_estatisticas():
+    """
+    Exibe estatísticas: total de pacientes, idade média, mais novo e mais velho.
+    """
+    limpar_tela()
+    print("--- ESTATÍSTICAS DO SISTEMA ---")
+    total = len(pacientes)
+
+    if total == 0:
+        print("Nenhum paciente cadastrado ainda.")
+        input("\nPressione ENTER para voltar ao menu...")
+        return
+
+    # A lista 'pacientes_com_idade' já deve conter apenas inteiros válidos,
+    # mas filtramos para garantir robustez.
+    pacientes_com_idade = [p for p in pacientes if isinstance(p.get("idade"), int)]
+
+    print(f"Total de pacientes cadastrados: {total}")
+
+    if pacientes_com_idade:
+        # 1. Idade Média
+        soma_idades = sum(p["idade"] for p in pacientes_com_idade)
+        media_idade = soma_idades / len(pacientes_com_idade)
+
+        # 2. Paciente mais novo e mais velho
+        mais_novo = min(pacientes_com_idade, key=lambda p: p["idade"])
+        mais_velho = max(pacientes_com_idade, key=lambda p: p["idade"])
+
+        print(f"Idade média: {media_idade:.1f} anos")
+        print(f"Paciente mais novo: {mais_novo['nome']} ({mais_novo['idade']} anos)")
+        print(f"Paciente mais velho: {mais_velho['nome']} ({mais_velho['idade']} anos)")
+    else:
+        print("Não há dados de idade válidos para calcular estatísticas.")
+
+    input("\nPressione ENTER para voltar ao menu...")
 
 
-# Página inicial
-@app.route("/")
-def index():
-    return render_template("index.html")
+def buscar_paciente():
+    """
+    Busca um paciente pelo nome (busca parcial, não sensível a maiúsculas/minúsculas).
+    """
+    limpar_tela()
+    print("--- BUSCAR PACIENTE ---")
+    # Converte o termo de busca para minúsculas
+    nome_busca = input("Digite o nome ou parte do nome para buscar: ").lower()
+    encontrado = False
+
+    print("\nRESULTADOS:")
+    # Itera sobre a lista verificando se o termo de busca está no nome do paciente
+    for p in pacientes:
+        if nome_busca in p["nome"].lower():
+            # Exibe os dados do paciente encontrado
+            print(f" > Nome: {p['nome']} | Idade: {p.get('idade', 'N/A')} | Tel: {p.get('telefone', 'N/A')}")
+            encontrado = True
+
+    if not encontrado:
+        print("Paciente não encontrado.")
+
+    input("\nPressione ENTER para voltar ao menu...")
 
 
-# Cadastro com validações
-@app.route("/cadastrar", methods=["GET", "POST"])
-def cadastrar():
-    if request.method == "POST":
-        nome = request.form.get("nome", "").strip()
-        idade = request.form.get("idade", "").strip()
-        telefone = request.form.get("telefone", "").strip()
+def listar_todos():
+    """
+    Lista todos os pacientes cadastrados de forma organizada.
+    """
+    limpar_tela()
+    print("--- LISTA DE PACIENTES CADASTRADOS ---")
+    if not pacientes:
+        print("A lista está vazia.")
+    else:
+        # Itera sobre a lista exibindo a numeração
+        for i, p in enumerate(pacientes, 1):
+            # Formatação de exibição
+            idade_info = f"{p.get('idade', 'N/A')} anos" if isinstance(p.get('idade'), int) else p.get('idade', 'N/A')
+            telefone_info = p.get('telefone', 'N/A')
 
-        erro = None
-        if not nome or not all(c.isalpha() or c.isspace() for c in nome):
-            erro = "Informe um nome válido (apenas letras e espaços)."
-        elif not idade.isdigit() or not (0 <= int(idade) <= 120):
-            erro = "Informe uma idade válida entre 0 e 120 anos."
-        else:
-            numeros = "".join(c for c in telefone if c.isdigit())
-            if len(numeros) not in (10, 11):
-                erro = "Informe um telefone válido com 10 ou 11 dígitos."
-
-        if erro:
-            flash(erro, "erro")
-            return render_template("cadastrar.html", nome=nome, idade=idade, telefone=telefone)
-
-        conn = get_conn()
-        conn.execute(
-            "INSERT INTO pacientes (nome, idade, telefone) VALUES (?, ?, ?)",
-            (nome, int(idade), telefone),
-        )
-        conn.commit()
-        conn.close()
-
-        flash("Paciente cadastrado com sucesso!", "sucesso")
-        return redirect(url_for("listar"))
-
-    return render_template("cadastrar.html", nome="", idade="", telefone="")
+            print(f"{i}. Nome: {p['nome']} | Idade: {idade_info} | Tel: {telefone_info}")
+    input("\nPressione ENTER para voltar ao menu...")
 
 
-# Listagem de pacientes em ordem alfabética
-@app.route("/listar")
-def listar():
-    conn = get_conn()
-    pacientes = conn.execute("SELECT * FROM pacientes ORDER BY nome").fetchall()
-    conn.close()
-    return render_template("listar.html", pacientes=pacientes)
+# Loop Principal do Menu
+while True:
+    limpar_tela()
+    print("\n=== SISTEMA CLÍNICA VIDA+ ===")
+    print("1. Cadastrar paciente (Nome, Idade, Telefone)")
+    print("2. Exibir estatísticas")
+    print("3. Buscar paciente pelo nome")
+    print("4. Listar todos os cadastrados")
+    print("5. Sair do sistema")
 
+    opcao = input("\nEscolha uma opção: ")
 
-# Busca por nome ignorando acentos
-@app.route("/buscar", methods=["GET", "POST"])
-def buscar():
-    resultados = None
-    termo = ""
-    if request.method == "POST":
-        termo = request.form.get("termo", "").strip()
-        termo_normalizado = normalizar_texto(termo)
-
-        conn = get_conn()
-        todos = conn.execute("SELECT * FROM pacientes").fetchall()
-        conn.close()
-
-        resultados = [
-            p for p in todos if termo_normalizado in normalizar_texto(p["nome"])
-        ]
-
-    return render_template("buscar.html", resultados=resultados, termo=termo)
-
-
-# Exclusão de paciente por ID
-@app.route("/excluir/<int:paciente_id>", methods=["POST"])
-def excluir(paciente_id):
-    conn = get_conn()
-    conn.execute("DELETE FROM pacientes WHERE id = ?", (paciente_id,))
-    conn.commit()
-    conn.close()
-    flash("Paciente removido.", "sucesso")
-    return redirect(url_for("listar"))
-
-
-if __name__ == "__main__":
-    init_db()
-    app.run(debug=True)
+    # Direciona para a função correspondente
+    if opcao == '1':
+        cadastrar_paciente()
+    elif opcao == '2':
+        ver_estatisticas()
+    elif opcao == '3':
+        buscar_paciente()
+    elif opcao == '4':
+        listar_todos()
+    elif opcao == '5':
+        print("Encerrando sistema...")
+        break
+    else:
+        # Tratamento de erro para opção inválida
+        print("\n--- ERRO: Opção inválida! Escolha um número de 1 a 5. ---")
+        input("Pressione ENTER para continuar...")
