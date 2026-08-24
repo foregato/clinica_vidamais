@@ -1,47 +1,59 @@
-import sqlite3
-
-DB_PATH = "clinica.db"
-
-
-# Conecta ao banco de dados
-def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-# Regra simples para checar se o paciente tem prioridade (por exemplo, 60 anos ou mais)
-def verificar_prioridade(idade):
-    return idade >= 60
+def obter_booleano(pergunta):
+    """
+    Função auxiliar para obter um valor booleano (True/False) a partir de
+    uma entrada de usuário 'S' (Sim) ou 'N' (Não).
+    """
+    while True:
+        resposta = input(f"{pergunta} (S/N): ").strip().upper()
+        if resposta == 'S':
+            return True
+        elif resposta == 'N':
+            return False
+        else:
+            print("Resposta inválida. Por favor, digite 'S' para Sim ou 'N' para Não.")
 
 
-# Consulta pacientes e exibe estatísticas e permissão de acesso prioritário
-def relatorio_acessos():
-    conn = get_conn()
-    pacientes = conn.execute("SELECT * FROM pacientes").fetchall()
-    conn.close()
+def verificar_acesso():
+    """
+    Implementa o sistema de controle de acesso lógico.
+    Verifica se o paciente pode ser atendido nas modalidades Consulta Normal e Emergência.
+    """
+    print("--- VERIFICAÇÃO DE ACESSO (LÓGICA PROPOSICIONAL) ---")
 
-    if not pacientes:
-        print("Nenhum paciente cadastrado.")
-        return
+    print("\nPor favor, informe o status das seguintes condições:")
 
-    # Cálculos estatísticos simples
-    idades = [p["idade"] for p in pacientes]
-    mais_novo = min(pacientes, key=lambda p: p["idade"])
-    mais_velho = max(pacientes, key=lambda p: p["idade"])
-    media = sum(idades) / len(idades)
+    # Variáveis Lógicas (Convertidas para True/False)
+    A = obter_booleano("A: O paciente tem agendamento marcado?")
+    B = obter_booleano("B: Os documentos estão em dia (RG/CPF válidos)?")
+    C = obter_booleano("C: Há médico disponível no horário?")
+    D = obter_booleano("D: Os pagamentos anteriores estão em dia?")
 
-    print("--- Estatísticas Gerais ---")
-    print(f"Total: {len(pacientes)}")
-    print(f"Média de idade: {media:.1f}")
-    print(f"Mais novo: {mais_novo['nome']} ({mais_novo['idade']} anos)")
-    print(f"Mais velho: {mais_velho['nome']} ({mais_velho['idade']} anos)")
+    print("\n--- RESULTADOS DA VERIFICAÇÃO ---")
 
-    print("\n--- Verificação de Prioridade ---")
-    for p in pacientes:
-        prioridade = "Sim (Prioritário)" if verificar_prioridade(p["idade"]) else "Não (Comum)"
-        print(f"Paciente: {p['nome']} | Idade: {p['idade']} | Acesso prioritário: {prioridade}")
+    # 1. Regra para CONSULTA NORMAL: O paciente será atendido SE:
+    # (Tem agendamento E documentos OK E médico disponível) OU
+    # (Documentos OK E médico disponível E pagamentos em dia)
+    # Expressão Lógica: R1 = (A ^ B ^ C) v (B ^ C ^ D)
+    acesso_normal = (A and B and C) or (B and C and D)
+
+    print(f"1. Acesso para Consulta Normal: {'LIBERADO (V)' if acesso_normal else 'NEGADO (F)'}")
+
+    # 2. Regra para EMERGÊNCIA: O paciente será atendido SE:
+    # (Há médico disponível) E (Tem documentos OU pagamentos em dia)
+    # Expressão Lógica: R2 = C ^ (B v D)
+
+    acesso_emergencia = C and (B or D)
+
+    print(f"2. Acesso para Emergência: {'LIBERADO (V)' if acesso_emergencia else 'NEGADO (F)'}")
+
+    # Exemplo do Passo 3, Tarefa 5: A=F, B=V, C=V, D=F
+    if not A and B and C and not D:
+        # Consulta Normal: (F ^ V ^ V) v (V ^ V ^ F) = F v F = F
+        # Emergência: V ^ (V v F) = V ^ V = V
+        print("\n(Situação prática do exercício: Consulta Normal: F, Emergência: V)")
+
+    input("\nPressione ENTER para voltar ao menu...")
 
 
-if __name__ == "__main__":
-    relatorio_acessos()
+# Executa a verificação de acesso ao iniciar o programa
+verificar_acesso()
